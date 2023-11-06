@@ -1,6 +1,6 @@
 import sys
 import time
-from PyQt5.QtWidgets import QDialog
+from PyQt5.QtWidgets import QDialog, QInputDialog
 from PyQt5.QtCore import Qt, pyqtSignal, QObject
 from PyQt5.QtGui import QFont
 from PyQt5 import QtWidgets
@@ -33,19 +33,18 @@ class HomeWin(QDialog):
         self.groupBox.setVisible(False)
 
         self.signal = CustomSignal()
-        self.signal.box.connect(self.signal_cb)
-        # 子线程更改控件不支持,改用信号传递
-        threading.Thread(target=self.dP).start()#提示标签
+        self.signal.box.connect(self.signal_cb)  # 信号传递修改控件
+        threading.Thread(target=self.dP).start()  # 提示标签
 
     def dP(self):
         prefix = "请求中"
         while True:
             self.signal.box.emit("dTip", prefix + ".")
-            time.sleep(0.25)
+            time.sleep(0.5)
             self.signal.box.emit("dTip", prefix+"..")
-            time.sleep(0.25)
+            time.sleep(0.5)
             self.signal.box.emit("dTip", prefix + "...")
-            time.sleep(0.25)
+            time.sleep(0.5)
 
     def nativeEvent(self, eventType, msg):
         message = MSG.from_address(msg.__int__())
@@ -54,19 +53,22 @@ class HomeWin(QDialog):
                 self.setVisible(not self.isVisible())
             elif message.wParam == 113:  # F2 - 中文翻译为其他语言 []
                 ...
-            elif message.wParam == 114:  # F3 - 固定区域截图 []
-                #bin = null() #固定区域截图
-                #threading.Thread(target=self.click_f4,args=(bin,)).start()
+            elif message.wParam == 114:  # F3 - 固定区域截图 [o]
+                left, top, width, height = (44, 418, 400, 200)
+                bobx = (left, top, left+width, top+height)
+                threading.Thread(target=self.click_f4, args=(bobx,)).start()
                 ...
             elif message.wParam == 115:  # F4 - 手动选区截图 [o]
-                threading.Thread(target=self.click_f4,args=(None,)).start()
+                threading.Thread(target=self.click_f4, args=(None,)).start()
             elif message.wParam == 35:  # End - 退出
                 os._exit(0)
         return (False, 0)
 
     def complete(self):
-        self.ocr = BaiduApi("baidu id","baidu key") # 改为自己的
-        self.ai = ChatGPT("hosts","token") # 改为自己的
+
+        self.ocr = BaiduApi("百度 ID", "百度 KEY")  # 改为自己的
+        self.ai = ChatGPT("BASE", "TOKEN")  # 改为自己的
+
         self.hwnd = int(self.winId())  # 取窗口句柄
         block_focus(self.hwnd)  # 无焦点模式
         bind_hotkey(self.hwnd, [112, 113, 114, 115, 35])  # 注册热键
@@ -79,11 +81,8 @@ class HomeWin(QDialog):
         elif type == "dTip":
             self.label.setText(msg)
 
-    def click_f4(self,img=None):
-        if img==None:
-            sta, bin = screenshot()
-        else:
-            sta, bin = (True,img)
+    def click_f4(self, bobx):
+        sta, bin = screenshot(bobx)
         if sta == True:
             self.signal.box.emit("tip", True)
             data = self.ocr.accurate(bin)
@@ -104,6 +103,14 @@ class HomeWin(QDialog):
             self.signal.box.emit("editBox", text)
 
             self.signal.box.emit("tip", False)
+
+    def dialog_input(self):
+        text, ok = QInputDialog.getText(self, '输入框', '请输入接口地址(Base):')
+        print(text, ok)
+
+        text, ok = QInputDialog.getText(
+            self, '输入框', '请输入ChatGPT秘钥(Token 或 Key):')
+        print(text, ok)
 
 
 class ShowMyWin:

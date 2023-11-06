@@ -24,19 +24,25 @@ def bind_hotkey(hWnd, hotkey):
         user32.RegisterHotKey(hWnd, key, 0, key)
 
 
-def screenshot():
-    user32 = ctypes.windll.user32
-    user32.OpenClipboard(0)
-    user32.EmptyClipboard()
-    user32.CloseClipboard()
-    dllPath = os.path.join(os.getcwd(), 'screenshot.dll')
-    os.system("Rundll32.exe %s, CameraWindow" % dllPath)
-    img = ImageGrab.grabclipboard()
-    if img == None:
-        return (False, None)
-    with io.BytesIO() as output:
-        img.save(output, format='png')
-        bytes = output.getvalue()
+def screenshot(bbox=None):
+    if bbox == None:
+        user32 = ctypes.windll.user32
+        user32.OpenClipboard(0)
+        user32.EmptyClipboard()
+        user32.CloseClipboard()
+        dllPath = os.path.join(os.getcwd(), 'screenshot.dll')
+        os.system("Rundll32.exe %s, CameraWindow" % dllPath)
+        img = ImageGrab.grabclipboard()
+        if img == None:
+            return (False, None)
+        with io.BytesIO() as output:
+            img.save(output, format='png')
+            bytes = output.getvalue()
+    else:
+        img = ImageGrab.grab(bbox=bbox)
+        with io.BytesIO() as output:
+            img.save(output, format='png')
+            bytes = output.getvalue()
     return (True, bytes)
 
 
@@ -79,7 +85,7 @@ class ChatGPT():
                 }
             ],
             temperature=0,
-            stream=True  # again, we set stream=True
+            stream=True # 流式输出
         )
 
         text = []
@@ -93,8 +99,3 @@ class ChatGPT():
             else:
                 print("")
         return "".join(str(x) for x in text)
-
-""" CHAT = ChatGPT("","")
-def cb(text):
-    print(text)
-CHAT.send("你是国产AI","你是谁",cb) """
