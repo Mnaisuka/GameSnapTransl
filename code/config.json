@@ -1,0 +1,9 @@
+{
+    "openai_base":"",
+    "openai_token":"",
+    "openai_prompt":"Overwatch,Translate chats into '简体中文'",
+    "transl_prompt":"Playing the Translation API,Overwatch,Translation into English",
+    "transl_model":"gpt-4-1106-preview",
+    "baidu_id":"",
+    "baidu_key":""
+}

@@ -75,19 +75,21 @@ class ChatGPT():
         openai.api_base = base_url
         openai.api_key = api_key
 
-    def send(self, prompt, content,callback=None):
+    def send(self, prompt, content,callback=None,model="gpt-3.5-turbo",max_tk=1024):
+        print("正在发送")
         response = openai.ChatCompletion.create(
-            model='gpt-3.5-turbo',
+            model=model,
             messages=[
                 {"role": "system", "content": prompt},
                 {
                     "role": "user", "content": content
                 }
             ],
+            max_tokens = max_tk,
             temperature=0,
-            stream=True # 流式输出
+            stream=True
         )
-
+        print("响应中")
         text = []
         for item in response:
             msg = item['choices'][0]['delta']
@@ -98,4 +100,5 @@ class ChatGPT():
                     callback("".join(str(x) for x in text))
             else:
                 print("")
+        print("正在关闭")
         return "".join(str(x) for x in text)

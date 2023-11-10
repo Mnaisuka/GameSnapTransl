@@ -1,3 +1,4 @@
+import json
 import sys
 import time
 from PyQt5.QtWidgets import QDialog, QInputDialog
@@ -6,9 +7,9 @@ from PyQt5.QtGui import QFont
 from PyQt5 import QtWidgets
 from PyQt5 import uic
 from funcs import *
+from popup import *
 from ctypes.wintypes import MSG
 import threading
-
 
 class CustomSignal(QObject):
     box = pyqtSignal(str, object)
@@ -19,6 +20,8 @@ class HomeWin(QDialog):
         super(HomeWin, self).__init__()
         uic.loadUi("./home.ui", self)
 
+        self.popup = None
+
         self.setWindowOpacity(0.9)
         self.setAutoFillBackground(False)
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
@@ -26,15 +29,16 @@ class HomeWin(QDialog):
 
         self.move(240, 800)  # 显示位置
 
-        font = QFont("微软雅黑", 11)
+        font = QFont()
+        font.setFamily("微软雅黑")
+        font.setPointSize(11)
         self.textEdit.setFont(font)
 
-        self.textEdit.setText("")  # 初始编辑框内容
         self.groupBox.setVisible(False)
 
         self.signal = CustomSignal()
-        self.signal.box.connect(self.signal_cb)  # 信号传递修改控件
-        threading.Thread(target=self.dP).start()  # 提示标签
+        self.signal.box.connect(self.signal_cb)
+        threading.Thread(target=self.dP).start()
 
     def dP(self):
         prefix = "请求中"
@@ -49,26 +53,34 @@ class HomeWin(QDialog):
     def nativeEvent(self, eventType, msg):
         message = MSG.from_address(msg.__int__())
         if message.message == 786:
-            if message.wParam == 112:  # F1 - 切换可视状态 [o]
+            if message.wParam == 112:
+                ...
+            elif message.wParam == 113:
+                if self.popup == None:
+                    self.popup = popup(self.chatgpt)
+                    self.popup.show()
+                else:
+                    if self.popup.isVisible():
+                        self.popup.savePos = self.popup.pos()
+                        self.popup.hide()
+                    else:
+                        self.popup.move(self.popup.savePos)  
+                        self.popup.show()
+            elif message.wParam == 114:
+                left, top, width, height = (45, 418, 450, 238)
+                threading.Thread(target=self.ocr_tl, args=(
+                    (left, top, left+width, top+height),)).start()
+            elif message.wParam == 115:
+                threading.Thread(target=self.ocr_tl, args=(None,)).start()
+            elif message.wParam == 36:
                 self.setVisible(not self.isVisible())
-            elif message.wParam == 113:  # F2 - 中文翻译为其他语言 []
-                ...
-            elif message.wParam == 114:  # F3 - 固定区域截图 [o]
-                left, top, width, height = (44, 418, 400, 200)
-                bobx = (left, top, left+width, top+height)
-                threading.Thread(target=self.click_f4, args=(bobx,)).start()
-                ...
-            elif message.wParam == 115:  # F4 - 手动选区截图 [o]
-                threading.Thread(target=self.click_f4, args=(None,)).start()
-            elif message.wParam == 35:  # End - 退出
+            elif message.wParam == 35:
                 os._exit(0)
         return (False, 0)
 
     def complete(self):
-
-        self.ocr = BaiduApi("百度 ID", "百度 KEY")  # 改为自己的
-        self.ai = ChatGPT("BASE", "TOKEN")  # 改为自己的
-
+        self.ocr = BaiduApi(Config.baidu_id, Config.baidu_key)
+        self.chatgpt = ChatGPT(Config.openai_base, Config.openai_token)
         self.hwnd = int(self.winId())  # 取窗口句柄
         block_focus(self.hwnd)  # 无焦点模式
         bind_hotkey(self.hwnd, [112, 113, 114, 115, 35])  # 注册热键
@@ -81,7 +93,7 @@ class HomeWin(QDialog):
         elif type == "dTip":
             self.label.setText(msg)
 
-    def click_f4(self, bobx):
+    def ocr_tl(self, bobx):
         sta, bin = screenshot(bobx)
         if sta == True:
             self.signal.box.emit("tip", True)
@@ -95,22 +107,52 @@ class HomeWin(QDialog):
             self.ogText = text
             self.signal.box.emit("editBox", text)
 
-            def cb(value):
-                self.signal.box.emit("editBox", value)
+            def cb(v):
+                self.signal.box.emit("editBox", v)
 
-            text = self.ai.send("翻译为简体中文", text, cb)
+            text = self.chatgpt.send(Config.openai_prompt, text, cb)
 
             self.signal.box.emit("editBox", text)
 
             self.signal.box.emit("tip", False)
 
-    def dialog_input(self):
-        text, ok = QInputDialog.getText(self, '输入框', '请输入接口地址(Base):')
-        print(text, ok)
 
-        text, ok = QInputDialog.getText(
-            self, '输入框', '请输入ChatGPT秘钥(Token 或 Key):')
-        print(text, ok)
+class ConfigRead():
+    def __init__(self):
+        with open('config.json', 'r', encoding='utf-8') as file:
+            items = json.load(file)
+        for item in items:
+            setattr(self, item, items[item])
+
+        search = [
+            {
+                "name": "openai_base",
+                "default": None
+            },
+            {
+                "name": "openai_token",
+                "default": None
+            },
+            {
+                "name": "openai_prompt",
+                "default": None
+            },
+            {
+                "name": "baidu_id",
+                "default": None
+            },
+            {
+                "name": "baidu_key",
+                "default": None
+            }
+        ]
+
+        for item in search:
+            if not hasattr(self, item['name']):
+                print("缺少参数", item)
+
+
+Config = ConfigRead()
 
 
 class ShowMyWin:
@@ -123,3 +165,4 @@ class ShowMyWin:
 
 if __name__ == '__main__':
     ShowMyWin()
+    
