@@ -1,6 +1,6 @@
 # GameSnapTransl
 
-功能还没全部迁移完
+功能基本已全部迁移完，运行需要在JSON配置OPENAI和百度OCR
 
 > F1 暂无功能
 
